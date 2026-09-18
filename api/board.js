@@ -8,7 +8,7 @@ const path = require('path');
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
-const GITHUB_FILE_PATH = process.env.GITHUB_FILE_PATH || 'homepage/data/board.json';
+const GITHUB_FILE_PATH = process.env.GITHUB_FILE_PATH || 'data/board.json';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234';
 
 // Helper: Get local file path fallback

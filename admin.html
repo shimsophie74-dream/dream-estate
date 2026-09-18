@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>부동산 소식 관리자 포털 | Vercel 서버리스 어드민</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .admin-container {
+      max-width: 1140px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .admin-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .admin-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      margin-bottom: 30px;
+      box-shadow: var(--shadow-sm);
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .admin-table th, .admin-table td {
+      padding: 14px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .admin-table th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+    .badge-cat {
+      background: rgba(15, 118, 110, 0.1);
+      color: var(--primary);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .btn-table-edit {
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      background: #f1f5f9;
+      color: var(--text-main);
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-table-edit:hover {
+      background: #e2e8f0;
+    }
+    .btn-table-del {
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      background: #fee2e2;
+      color: #dc2626;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-table-del:hover {
+      background: #fca5a5;
+    }
+    .status-badge-active {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .status-badge-local {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      background: #fffbeb;
+      color: #b45309;
+      border: 1px solid #fde68a;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    /* Auth Modal */
+    .login-modal-box {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 14, 23, 0.85);
+      backdrop-filter: blur(10px);
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: #ffffff;
+      border-radius: var(--radius-xl);
+      padding: 40px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body style="background:#f1f5f9; padding-bottom: 40px;">
+
+  <!-- Password Authentication Modal -->
+  <div id="loginModal" class="login-modal-box">
+    <div class="login-card">
+      <div class="logo-badge" style="margin: 0 auto 16px; width:52px; height:52px; font-size:24px;">🔒</div>
+      <h2 style="font-size:22px; font-weight:800; color:var(--navy-dark); margin-bottom:8px;">관리자 인증</h2>
+      <p style="font-size:14px; color:var(--text-muted); margin-bottom:24px;">부동산 소식 및 뉴스 게시판을 관리하려면 관리자 비밀번호를 입력해 주세요.</p>
+      
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group" style="margin-bottom: 20px; text-align: left;">
+          <label class="form-label">비밀번호 (기본값: admin1234)</label>
+          <input type="password" id="adminPasswordInput" class="form-control" placeholder="비밀번호 입력" value="admin1234" required autofocus>
+        </div>
+        <button type="submit" class="btn-primary-glow" style="width:100%; justify-content:center; padding:14px;">로그인 및 관리자 진입</button>
+        <div style="margin-top:14px;">
+          <a href="/" style="font-size:13px; color:var(--text-muted);">← 홈페이지로 돌아가기</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Main Portal -->
+  <div id="adminContent" class="admin-container" style="display:none;">
+    
+    <!-- Top Navigation -->
+    <div class="admin-header-bar">
+      <div>
+        <a href="/" style="font-size:14px; font-weight:700; color:var(--primary); display:inline-flex; align-items:center; gap:6px; margin-bottom:6px;">
+          ← 홈페이지 바로가기
+        </a>
+        <h1 style="font-size:26px; font-weight:900; color:var(--navy-dark);">부동산 소식 & 뉴스 관리자</h1>
+        <p style="font-size:14px; color:var(--text-muted);">Vercel 서버리스 및 GitHub JSON 데이터베이스 연동 관리 포털</p>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button onclick="downloadJsonBackup()" class="btn-secondary-glass" style="color:var(--navy-dark); border-color:#cbd5e1; background:#fff; padding:10px 16px; font-size:13px;">
+          💾 JSON 백업 다운로드
+        </button>
+        <button onclick="handleLogout()" class="btn-secondary-glass" style="color:#ef4444; border-color:#fca5a5; background:#fff; padding:10px 16px; font-size:13px;">
+          로그아웃
+        </button>
+      </div>
+    </div>
+
+    <!-- Serverless & GitHub DB Status Card -->
+    <div class="admin-card" style="background: linear-gradient(to right, #f0fdfa, #f8fafc); border-color:#99f6e4;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:20px;">⚡</span>
+          <div>
+            <h3 style="font-size:16px; font-weight:800; color:#0d5f58;">데이터베이스 연동 상태</h3>
+            <p style="font-size:13px; color:#64748b;">별도의 유료 DB 없이 GitHub 레포지토리의 <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">data/board.json</code> 파일을 영구 보존 데이터베이스로 사용합니다.</p>
+          </div>
+        </div>
+        <div id="dbSourceBadge" class="status-badge-local">연동 확인 중...</div>
+      </div>
+
+      <details style="font-size:13px; color:#475569; background:#fff; padding:12px 16px; border-radius:8px; border:1px solid #e2e8f0;">
+        <summary style="font-weight:700; cursor:pointer; color:#0f766e;">📌 Vercel 배포 시 GitHub 자동 커밋 영구 저장 설정법 (클릭하여 보기)</summary>
+        <div style="margin-top:10px; line-height:1.7;">
+          Vercel 대시보드 <strong>Project Settings → Environment Variables</strong>에 다음 3가지 환경변수를 등록하시면, 관리자에서 글을 쓸 때마다 GitHub 저장소로 자동 커밋되어 데이터가 영구 보존됩니다:
+          <ul style="margin:8px 0 8px 20px; list-style:disc;">
+            <li><strong>GITHUB_TOKEN</strong>: GitHub 개인 액세스 토큰 (Personal Access Token, <code style="background:#f1f5f9; padding:2px 4px;">repo</code> 권한 필요)</li>
+            <li><strong>GITHUB_OWNER</strong>: GitHub 계정명 또는 조직명 (예: <code style="background:#f1f5f9; padding:2px 4px;">your-github-id</code>)</li>
+            <li><strong>GITHUB_REPO</strong>: GitHub 레포지토리명 (예: <code style="background:#f1f5f9; padding:2px 4px;">your-realestate-repo</code>)</li>
+            <li><strong>ADMIN_PASSWORD</strong>: 관리자 비밀번호 (기본값: admin1234)</li>
+          </ul>
+        </div>
+      </details>
+    </div>
+
+    <!-- Post Creation & Editor Form -->
+    <div class="admin-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 id="formCardTitle" style="font-size:19px; font-weight:800; color:var(--navy-dark);">새 부동산 소식 / 뉴스 작성</h2>
+        <button id="cancelEditBtn" onclick="resetForm()" style="display:none; font-size:13px; color:#ef4444; background:none; cursor:pointer; font-weight:700;">✕ 수정 취소</button>
+      </div>
+
+      <form id="postEditorForm">
+        <div class="form-grid">
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label">제목 *</label>
+            <input type="text" name="title" class="form-control" placeholder="예: 안양 인덕원역 역세권 상가·오피스 가치 전망" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">카테고리</label>
+            <select name="category" class="form-control">
+              <option value="개발호재">개발호재 (교통·환승·지구단위)</option>
+              <option value="공장·창고">공장·창고 (지식산업센터·물류)</option>
+              <option value="상가·사무실">상가·사무실 (역세권·임대수익)</option>
+              <option value="세무·법률">세무·법률 (취득세감면·정책자금)</option>
+              <option value="시장동향">시장동향 (시세·공실률트렌드)</option>
+              <option value="공지사항">공지사항</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">작성자</label>
+            <input type="text" name="author" class="form-control" value="대표 공인중개사">
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label">한 줄 요약 (카드 및 목록에 표시)</label>
+            <input type="text" name="summary" class="form-control" placeholder="게시글의 핵심 내용을 1~2문장으로 요약해 주세요.">
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label">본문 내용 (마크다운 지원: ### 소제목, - 리스트, > 인용구 등) *</label>
+            <textarea name="content" class="form-control" rows="8" placeholder="상세 소식 및 분석 내용을 입력하세요." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">태그 (쉼표로 구분)</label>
+            <input type="text" name="tags" class="form-control" placeholder="인덕원, GTX-C, 상가투자, 공장매매">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">썸네일 이미지 URL (미입력 시 기본 이미지 자동 적용)</label>
+            <input type="url" name="thumbnail" class="form-control" placeholder="https://images.unsplash.com/photo-...">
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1; display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="isPinnedCheck" name="isPinned" style="width:18px; height:18px;">
+            <label for="isPinnedCheck" style="font-size:14px; font-weight:700; color:var(--navy-dark); cursor:pointer;">
+              상단 고정 공지로 등록 (목록 최상단에 핀으로 강조 표시)
+            </label>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:12px;">
+          <button type="button" onclick="resetForm()" class="btn-secondary-glass" style="color:var(--text-muted); border-color:#cbd5e1; background:#f8fafc;">초기화</button>
+          <button type="submit" id="savePostBtn" class="btn-primary-glow" style="padding:12px 28px;">게시글 저장</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Posts Table List -->
+    <div class="admin-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+        <h2 style="font-size:19px; font-weight:800; color:var(--navy-dark);">
+          등록된 게시글 목록 <span id="totalPostCount" style="color:var(--primary); font-size:15px; font-weight:700;"></span>
+        </h2>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width:50px;">No</th>
+              <th style="width:110px;">카테고리</th>
+              <th>제목</th>
+              <th style="width:100px;">등록일</th>
+              <th style="width:70px;">조회수</th>
+              <th style="width:130px;">관리</th>
+            </tr>
+          </thead>
+          <tbody id="adminPostListBody">
+            <!-- Dynamic rows rendered by admin.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>부동산 소식 관리자 포털 | Vercel 서버리스 어드민</title>
+  <title>부동산 통합 관리자 포털 | 리뷰·매물·소식 관리</title>
   <link rel="stylesheet" href="css/style.css">
   <style>
     .admin-container {
@@ -15,7 +15,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 30px;
+      margin-bottom: 24px;
       padding-bottom: 20px;
       border-bottom: 1px solid var(--border-color);
     }
@@ -26,6 +26,34 @@
       padding: 28px;
       margin-bottom: 30px;
       box-shadow: var(--shadow-sm);
+    }
+    .admin-tab-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .admin-tab-btn {
+      padding: 12px 22px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      background: #ffffff;
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      transition: var(--transition-fast);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .admin-tab-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .admin-tab-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(15, 118, 110, 0.25);
     }
     .admin-table {
       width: 100%;
@@ -57,6 +85,7 @@
       color: var(--text-main);
       font-weight: 600;
       cursor: pointer;
+      border: none;
     }
     .btn-table-edit:hover {
       background: #e2e8f0;
@@ -68,6 +97,7 @@
       color: #dc2626;
       font-weight: 600;
       cursor: pointer;
+      border: none;
     }
     .btn-table-del:hover {
       background: #fca5a5;
@@ -115,14 +145,14 @@
     }
   </style>
 </head>
-<body style="background:#f1f5f9; padding-bottom: 40px;">
+<body style="background:#f1f5f9; padding-bottom: 60px;">
 
   <!-- Password Authentication Modal -->
   <div id="loginModal" class="login-modal-box">
     <div class="login-card">
       <div class="logo-badge" style="margin: 0 auto 16px; width:52px; height:52px; font-size:24px;">🔒</div>
       <h2 style="font-size:22px; font-weight:800; color:var(--navy-dark); margin-bottom:8px;">관리자 인증</h2>
-      <p style="font-size:14px; color:var(--text-muted); margin-bottom:24px;">부동산 소식 및 뉴스 게시판을 관리하려면 관리자 비밀번호를 입력해 주세요.</p>
+      <p style="font-size:14px; color:var(--text-muted); margin-bottom:24px;">고객 리뷰, 매물 정보 및 부동산 소식을 관리하려면 관리자 비밀번호를 입력해 주세요.</p>
       
       <form onsubmit="handleLogin(event)">
         <div class="form-group" style="margin-bottom: 20px; text-align: left;">
@@ -140,143 +170,454 @@
   <!-- Admin Main Portal -->
   <div id="adminContent" class="admin-container" style="display:none;">
     
-    <!-- Top Navigation -->
+    <!-- Top Navigation Bar -->
     <div class="admin-header-bar">
       <div>
         <a href="/" style="font-size:14px; font-weight:700; color:var(--primary); display:inline-flex; align-items:center; gap:6px; margin-bottom:6px;">
           ← 홈페이지 바로가기
         </a>
-        <h1 style="font-size:26px; font-weight:900; color:var(--navy-dark);">부동산 소식 & 뉴스 관리자</h1>
-        <p style="font-size:14px; color:var(--text-muted);">Vercel 서버리스 및 GitHub JSON 데이터베이스 연동 관리 포털</p>
+        <h1 style="font-size:26px; font-weight:900; color:var(--navy-dark);">부동산 통합 관리 시스템</h1>
+        <p style="font-size:14px; color:var(--text-muted);">실거래 고객 리뷰, 실제 매물 스펙, 부동산 소식 영구 보존 포털</p>
       </div>
 
       <div style="display:flex; gap:10px; align-items:center;">
-        <button onclick="downloadJsonBackup()" class="btn-secondary-glass" style="color:var(--navy-dark); border-color:#cbd5e1; background:#fff; padding:10px 16px; font-size:13px;">
-          💾 JSON 백업 다운로드
-        </button>
         <button onclick="handleLogout()" class="btn-secondary-glass" style="color:#ef4444; border-color:#fca5a5; background:#fff; padding:10px 16px; font-size:13px;">
           로그아웃
         </button>
       </div>
     </div>
 
-    <!-- Serverless & GitHub DB Status Card -->
-    <div class="admin-card" style="background: linear-gradient(to right, #f0fdfa, #f8fafc); border-color:#99f6e4;">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:14px;">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <span style="font-size:20px;">⚡</span>
+    <!-- Admin Tabs -->
+    <div class="admin-tab-bar">
+      <button onclick="switchAdminTab('reviews')" id="tabBtnReviews" class="admin-tab-btn active">
+        ⭐ 고객 리뷰 & 실매물 관리
+      </button>
+      <button onclick="switchAdminTab('properties')" id="tabBtnProperties" class="admin-tab-btn">
+        🏢 실시간 매물 직접 관리
+      </button>
+      <button onclick="switchAdminTab('board')" id="tabBtnBoard" class="admin-tab-btn">
+        📰 부동산 소식·뉴스 관리
+      </button>
+    </div>
+
+    <!-- ======================================================================
+         TAB 1: REVIEWS MANAGEMENT (Real Property Details + Review)
+         ====================================================================== -->
+    <div id="tabSectionReviews">
+      <!-- Review Input/Edit Card -->
+      <div class="admin-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
           <div>
-            <h3 style="font-size:16px; font-weight:800; color:#0d5f58;">데이터베이스 연동 상태</h3>
-            <p style="font-size:13px; color:#64748b;">별도의 유료 DB 없이 GitHub 레포지토리의 <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">data/board.json</code> 파일을 영구 보존 데이터베이스로 사용합니다.</p>
+            <h2 id="reviewFormTitle" style="font-size:19px; font-weight:800; color:var(--navy-dark);">⭐ 고객 리뷰 & 실매물 정보 등록</h2>
+            <p style="font-size:13px; color:var(--text-muted);">실제 계약한 매물 정보와 고객 후기를 직접 입력하여 홈페이지에 즉시 반영합니다.</p>
           </div>
+          <button id="cancelReviewEditBtn" onclick="resetReviewForm()" style="display:none; font-size:13px; color:#ef4444; background:none; cursor:pointer; font-weight:700;">✕ 수정 취소</button>
         </div>
-        <div id="dbSourceBadge" class="status-badge-local">연동 확인 중...</div>
+
+        <form id="adminReviewForm" onsubmit="saveAdminReview(event)">
+          <!-- Property Information -->
+          <div class="form-section-title">
+            <span>🏢 1. 실제 계약 매물 정보</span>
+          </div>
+
+          <div class="form-grid" style="margin-bottom:20px;">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label">매물명 / 단지·건물명 *</label>
+              <input type="text" id="revPropTitle" class="form-control" placeholder="예: 안양 평촌 스마트스퀘어 4층 드라이브인 호실" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">부동산 유형</label>
+              <select id="revPropType" class="form-control">
+                <option value="factory">🏭 공장 / 지식산업센터</option>
+                <option value="warehouse">📦 물류창고 / 보관창고</option>
+                <option value="retail">🏪 상가 / 점포</option>
+                <option value="office">🏢 사무실 / 사옥</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">소재 지역</label>
+              <input type="text" id="revPropRegion" class="form-control" placeholder="예: 안양 평촌, 군포 당정, 의왕 포일">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">전용 면적 (실평수) *</label>
+              <input type="number" step="0.1" id="revPropArea" class="form-control" placeholder="예: 75" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">거래 금액 *</label>
+              <input type="text" id="revPropPrice" class="form-control" placeholder="예: 보증금 4,000만 / 월 380만 또는 매매 38억" required>
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label">매물 핵심 스펙 (쉼표로 구분)</label>
+              <input type="text" id="revPropSpecs" class="form-control" placeholder="예: 5톤 화물 진입, 층고 5.6m, 동력 75kW, 호이스트 5톤">
+            </div>
+          </div>
+
+          <!-- Review Information -->
+          <div class="form-section-title">
+            <span>✍️ 2. 고객 후기 및 평가</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">작성자명 / 직함 *</label>
+              <input type="text" id="revClientName" class="form-control" placeholder="예: 성우정밀 김*수 대표" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">고객 회사명 또는 업종</label>
+              <input type="text" id="revClientCompany" class="form-control" placeholder="예: 정밀금형가공 제조기업">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">만족도 평점</label>
+              <select id="revRating" class="form-control" style="color:var(--accent-gold); font-weight:800;">
+                <option value="5">★★★★★ 5.0 만점</option>
+                <option value="4">★★★★☆ 4.0</option>
+                <option value="3">★★★☆☆ 3.0</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">강조 태그 (쉼표로 구분)</label>
+              <input type="text" id="revTags" class="form-control" placeholder="예: 드라이브인, 하중검증, 신속계약">
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label">후기 제목 *</label>
+              <input type="text" id="revTitle" class="form-control" placeholder="예: 기계 하중과 5톤 화물차 진입 조건을 단 하루 만에 완벽 해결했습니다!" required>
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label">후기 상세 본문 *</label>
+              <textarea id="revContent" class="form-control" rows="5" placeholder="실제 매물을 구하고 계약하는 과정에서 겪은 생생한 후기를 입력하세요." required></textarea>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+            <button type="button" onclick="resetReviewForm()" class="btn-secondary-glass" style="color:var(--text-muted); border-color:#cbd5e1; background:#f8fafc;">초기화</button>
+            <button type="submit" id="saveReviewBtn" class="btn-primary-glow" style="padding:12px 28px;">⭐ 리뷰 저장</button>
+          </div>
+        </form>
       </div>
 
-      <details style="font-size:13px; color:#475569; background:#fff; padding:12px 16px; border-radius:8px; border:1px solid #e2e8f0;">
-        <summary style="font-weight:700; cursor:pointer; color:#0f766e;">📌 Vercel 배포 시 GitHub 자동 커밋 영구 저장 설정법 (클릭하여 보기)</summary>
-        <div style="margin-top:10px; line-height:1.7;">
-          Vercel 대시보드 <strong>Project Settings → Environment Variables</strong>에 다음 3가지 환경변수를 등록하시면, 관리자에서 글을 쓸 때마다 GitHub 저장소로 자동 커밋되어 데이터가 영구 보존됩니다:
-          <ul style="margin:8px 0 8px 20px; list-style:disc;">
-            <li><strong>GITHUB_TOKEN</strong>: GitHub 개인 액세스 토큰 (Personal Access Token, <code style="background:#f1f5f9; padding:2px 4px;">repo</code> 권한 필요)</li>
-            <li><strong>GITHUB_OWNER</strong>: GitHub 계정명 또는 조직명 (예: <code style="background:#f1f5f9; padding:2px 4px;">your-github-id</code>)</li>
-            <li><strong>GITHUB_REPO</strong>: GitHub 레포지토리명 (예: <code style="background:#f1f5f9; padding:2px 4px;">your-realestate-repo</code>)</li>
-            <li><strong>ADMIN_PASSWORD</strong>: 관리자 비밀번호 (기본값: admin1234)</li>
-          </ul>
+      <!-- Reviews Table List -->
+      <div class="admin-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <h2 style="font-size:19px; font-weight:800; color:var(--navy-dark);">
+            등록된 고객 리뷰 목록 <span id="adminReviewCountBadge" style="color:var(--primary); font-size:15px; font-weight:700;"></span>
+          </h2>
         </div>
-      </details>
+
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width:50px;">No</th>
+                <th style="width:130px;">고객명 / 기업</th>
+                <th>실계약 매물명</th>
+                <th style="width:80px;">평점</th>
+                <th style="width:90px;">계약일자</th>
+                <th style="width:130px;">관리</th>
+              </tr>
+            </thead>
+            <tbody id="adminReviewsTableBody">
+              <!-- Rendered dynamically by admin.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
-    <!-- Post Creation & Editor Form -->
-    <div class="admin-card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h2 id="formCardTitle" style="font-size:19px; font-weight:800; color:var(--navy-dark);">새 부동산 소식 / 뉴스 작성</h2>
-        <button id="cancelEditBtn" onclick="resetForm()" style="display:none; font-size:13px; color:#ef4444; background:none; cursor:pointer; font-weight:700;">✕ 수정 취소</button>
+    <!-- ======================================================================
+         TAB 2: PROPERTIES MANAGEMENT (Direct Real Property Entries)
+         ====================================================================== -->
+    <div id="tabSectionProperties" style="display:none;">
+      <div class="admin-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <div>
+            <h2 id="propFormTitle" style="font-size:19px; font-weight:800; color:var(--navy-dark);">🏢 실제 매물 직접 등록 & 수정</h2>
+            <p style="font-size:13px; color:var(--text-muted);">홈페이지 추천 매물 섹션에 노출되는 실제 산업·상업용 부동산 매물을 직접 등록합니다.</p>
+          </div>
+          <button id="cancelPropEditBtn" onclick="resetPropForm()" style="display:none; font-size:13px; color:#ef4444; background:none; cursor:pointer; font-weight:700;">✕ 수정 취소</button>
+        </div>
+
+        <form id="adminPropForm" onsubmit="saveAdminProperty(event)">
+          <div class="form-grid">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label">매물명 / 제목 *</label>
+              <input type="text" id="propTitleInput" class="form-control" placeholder="예: 평촌 스마트스퀘어 드라이브인 호실 (5톤 화물차 진입)" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">부동산 유형</label>
+              <select id="propTypeSelect" class="form-control">
+                <option value="factory">공장 / 지식산업센터</option>
+                <option value="warehouse">물류 / 보관창고</option>
+                <option value="retail">상가 / 점포</option>
+                <option value="office">사무실 / 사옥</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">소재 지역</label>
+              <select id="propRegionSelect" class="form-control">
+                <option value="anyang">안양 평촌/인덕원</option>
+                <option value="gunpo">군포 당정/복합물류</option>
+                <option value="uiwang">의왕 포일/테크노파크</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">거래 구분</label>
+              <select id="propPriceTypeSelect" class="form-control">
+                <option value="임대">임대 (보증금/월세)</option>
+                <option value="매매">매매</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">전용 면적 (실평수) *</label>
+              <input type="number" step="0.1" id="propAreaInput" class="form-control" placeholder="예: 75" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">보증금 (만원, 임대 시)</label>
+              <input type="number" id="propDepositInput" class="form-control" placeholder="예: 4000">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">월세 (만원, 임대 시)</label>
+              <input type="number" id="propRentInput" class="form-control" placeholder="예: 380">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">매매가 (만원, 매매 시)</label>
+              <input type="number" id="propSalePriceInput" class="form-control" placeholder="예: 380000 (38억)">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">층수 / 층고</label>
+              <input type="text" id="propFloorInput" class="form-control" placeholder="예: 4층 / 5.6m">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">전력 / 주차</label>
+              <input type="text" id="propPowerInput" class="form-control" placeholder="예: 75kW / 무료 3대">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">강조 뱃지</label>
+              <input type="text" id="propBadgeInput" class="form-control" placeholder="예: 추천급매, 단독매매, 인테리어완비">
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label">핵심 스펙 (쉼표 구분)</label>
+              <input type="text" id="propSpecsInput" class="form-control" placeholder="예: 드라이브인, 도어투도어, 호이스트, 바닥하중 1.2톤">
+            </div>
+
+            <!-- Property JPG Image Upload Component -->
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>📷 매물 사진 등록 (JPG / PNG 파일 직접 업로드) *</span>
+                <span style="font-size:12px; color:var(--text-light); font-weight:normal;">PC나 스마트폰의 실제 현장 사진을 선택하세요</span>
+              </label>
+
+              <!-- Hidden file input for native file selection -->
+              <input type="file" id="propImageFileInput" accept="image/jpeg,image/png,image/webp,image/jpg" style="display:none;" onchange="handlePropFileChange(event)">
+
+              <!-- Clickable Drag & Drop Zone -->
+              <div id="propDropZone" class="image-upload-dropzone" onclick="document.getElementById('propImageFileInput').click()">
+                <div class="upload-dropzone-content">
+                  <div class="upload-icon-circle">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  </div>
+                  <div style="font-size:15px; font-weight:800; color:var(--navy-dark); margin-bottom:4px;">
+                    클릭하여 내 컴퓨터의 JPG 사진 파일 선택
+                  </div>
+                  <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+                    또는 여기에 사진 파일을 마우스로 끌어다 놓으세요 (.jpg, .jpeg, .png)
+                  </div>
+                  <button type="button" class="btn-secondary-glass" style="background:#fff; font-size:13px; font-weight:700; padding:8px 18px; pointer-events:none;">
+                    📁 내 컴퓨터에서 사진 파일 찾기
+                  </button>
+                </div>
+              </div>
+
+              <!-- Live Image Preview Card -->
+              <div id="propImagePreviewBox" style="display:none; margin-top:14px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:14px; padding:16px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:12px; font-weight:800; background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:4px;">선택된 매물 사진</span>
+                    <span id="propPreviewFileName" style="font-size:13px; font-weight:700; color:var(--navy-dark);"></span>
+                    <span id="propPreviewFileSize" style="font-size:12px; color:var(--text-light);"></span>
+                  </div>
+                  <div style="display:flex; gap:6px;">
+                    <button type="button" onclick="document.getElementById('propImageFileInput').click()" class="btn-table-edit" style="font-size:12px; padding:6px 12px;">
+                      🔄 사진 변경
+                    </button>
+                    <button type="button" onclick="clearPropImagePreview()" class="btn-table-del" style="font-size:12px; padding:6px 12px;">
+                      ✕ 사진 삭제
+                    </button>
+                  </div>
+                </div>
+
+                <div style="width:100%; max-height:300px; overflow:hidden; border-radius:10px; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; background:#0f172a;">
+                  <img id="propPreviewImg" src="" alt="매물 사진 미리보기" style="max-width:100%; max-height:300px; object-fit:contain;">
+                </div>
+              </div>
+
+              <!-- Hidden input to hold current image value (Uploaded relative URL or compressed Base64 Data URL) -->
+              <input type="hidden" id="propImageInput">
+
+              <!-- Optional URL Fallback Accordion -->
+              <details style="margin-top:10px; font-size:12px; color:var(--text-muted);">
+                <summary style="cursor:pointer; color:var(--primary); font-weight:600;">🔗 외부 이미지 URL을 직접 입력하시겠습니까?</summary>
+                <div style="margin-top:8px;">
+                  <input type="url" id="propImageUrlFallback" class="form-control" style="font-size:13px; padding:8px 12px;" placeholder="https://..." oninput="handlePropUrlFallback(this.value)">
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+            <button type="button" onclick="resetPropForm()" class="btn-secondary-glass" style="color:var(--text-muted); border-color:#cbd5e1; background:#f8fafc;">초기화</button>
+            <button type="submit" id="savePropBtn" class="btn-primary-glow" style="padding:12px 28px;">🏢 매물 저장</button>
+          </div>
+        </form>
       </div>
 
-      <form id="postEditorForm">
-        <div class="form-grid">
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label class="form-label">제목 *</label>
-            <input type="text" name="title" class="form-control" placeholder="예: 안양 인덕원역 역세권 상가·오피스 가치 전망" required>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">카테고리</label>
-            <select name="category" class="form-control">
-              <option value="개발호재">개발호재 (교통·환승·지구단위)</option>
-              <option value="공장·창고">공장·창고 (지식산업센터·물류)</option>
-              <option value="상가·사무실">상가·사무실 (역세권·임대수익)</option>
-              <option value="세무·법률">세무·법률 (취득세감면·정책자금)</option>
-              <option value="시장동향">시장동향 (시세·공실률트렌드)</option>
-              <option value="공지사항">공지사항</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">작성자</label>
-            <input type="text" name="author" class="form-control" value="대표 공인중개사">
-          </div>
-
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label class="form-label">한 줄 요약 (카드 및 목록에 표시)</label>
-            <input type="text" name="summary" class="form-control" placeholder="게시글의 핵심 내용을 1~2문장으로 요약해 주세요.">
-          </div>
-
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label class="form-label">본문 내용 (마크다운 지원: ### 소제목, - 리스트, > 인용구 등) *</label>
-            <textarea name="content" class="form-control" rows="8" placeholder="상세 소식 및 분석 내용을 입력하세요." required></textarea>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">태그 (쉼표로 구분)</label>
-            <input type="text" name="tags" class="form-control" placeholder="인덕원, GTX-C, 상가투자, 공장매매">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">썸네일 이미지 URL (미입력 시 기본 이미지 자동 적용)</label>
-            <input type="url" name="thumbnail" class="form-control" placeholder="https://images.unsplash.com/photo-...">
-          </div>
-
-          <div class="form-group" style="grid-column: 1 / -1; display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" id="isPinnedCheck" name="isPinned" style="width:18px; height:18px;">
-            <label for="isPinnedCheck" style="font-size:14px; font-weight:700; color:var(--navy-dark); cursor:pointer;">
-              상단 고정 공지로 등록 (목록 최상단에 핀으로 강조 표시)
-            </label>
-          </div>
+      <!-- Properties Table -->
+      <div class="admin-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <h2 style="font-size:19px; font-weight:800; color:var(--navy-dark);">
+            등록된 실매물 목록 <span id="adminPropCountBadge" style="color:var(--primary); font-size:15px; font-weight:700;"></span>
+          </h2>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; gap:12px;">
-          <button type="button" onclick="resetForm()" class="btn-secondary-glass" style="color:var(--text-muted); border-color:#cbd5e1; background:#f8fafc;">초기화</button>
-          <button type="submit" id="savePostBtn" class="btn-primary-glow" style="padding:12px 28px;">게시글 저장</button>
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width:50px;">No</th>
+                <th style="width:110px;">유형</th>
+                <th>매물명</th>
+                <th style="width:90px;">면적</th>
+                <th style="width:140px;">가격</th>
+                <th style="width:130px;">관리</th>
+              </tr>
+            </thead>
+            <tbody id="adminPropertiesTableBody">
+              <!-- Rendered dynamically by admin.js -->
+            </tbody>
+          </table>
         </div>
-      </form>
+      </div>
     </div>
 
-    <!-- Posts Table List -->
-    <div class="admin-card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
-        <h2 style="font-size:19px; font-weight:800; color:var(--navy-dark);">
-          등록된 게시글 목록 <span id="totalPostCount" style="color:var(--primary); font-size:15px; font-weight:700;"></span>
-        </h2>
+    <!-- ======================================================================
+         TAB 3: BOARD ARTICLES MANAGEMENT (News & Market Insights)
+         ====================================================================== -->
+    <div id="tabSectionBoard" style="display:none;">
+      <!-- Post Creation & Editor Form -->
+      <div class="admin-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h2 id="formCardTitle" style="font-size:19px; font-weight:800; color:var(--navy-dark);">새 부동산 소식 / 칼럼 작성</h2>
+          <button id="cancelEditBtn" onclick="resetForm()" style="display:none; font-size:13px; color:#ef4444; background:none; cursor:pointer; font-weight:700;">✕ 수정 취소</button>
+        </div>
+
+        <form id="postEditorForm">
+          <div class="form-grid">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label">제목 *</label>
+              <input type="text" name="title" class="form-control" placeholder="예: 안양 인덕원역 역세권 상가·오피스 가치 전망" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">카테고리</label>
+              <select name="category" class="form-control">
+                <option value="개발호재">개발호재 (교통·환승·지구단위)</option>
+                <option value="공장·창고">공장·창고 (지식산업센터·물류)</option>
+                <option value="상가·사무실">상가·사무실 (역세권·임대수익)</option>
+                <option value="세무·법률">세무·법률 (취득세감면·정책자금)</option>
+                <option value="시장동향">시장동향 (시세·공실률트렌드)</option>
+                <option value="공지사항">공지사항</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">작성자</label>
+              <input type="text" name="author" class="form-control" value="대표 공인중개사">
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label">한 줄 요약 (카드 및 목록에 표시)</label>
+              <input type="text" name="summary" class="form-control" placeholder="게시글의 핵심 내용을 1~2문장으로 요약해 주세요.">
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label">본문 내용 (마크다운 지원: ### 소제목, - 리스트, > 인용구 등) *</label>
+              <textarea name="content" class="form-control" rows="8" placeholder="상세 소식 및 분석 내용을 입력하세요." required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">태그 (쉼표로 구분)</label>
+              <input type="text" name="tags" class="form-control" placeholder="인덕원, GTX-C, 상가투자, 공장매매">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">썸네일 이미지 URL</label>
+              <input type="url" name="thumbnail" class="form-control" placeholder="https://images.unsplash.com/photo-...">
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1; display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="isPinnedCheck" name="isPinned" style="width:18px; height:18px;">
+              <label for="isPinnedCheck" style="font-size:14px; font-weight:700; color:var(--navy-dark); cursor:pointer;">
+                상단 고정 공지로 등록 (목록 최상단에 핀으로 강조 표시)
+              </label>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+            <button type="button" onclick="resetForm()" class="btn-secondary-glass" style="color:var(--text-muted); border-color:#cbd5e1; background:#f8fafc;">초기화</button>
+            <button type="submit" id="savePostBtn" class="btn-primary-glow" style="padding:12px 28px;">게시글 저장</button>
+          </div>
+        </form>
       </div>
 
-      <div style="overflow-x:auto;">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th style="width:50px;">No</th>
-              <th style="width:110px;">카테고리</th>
-              <th>제목</th>
-              <th style="width:100px;">등록일</th>
-              <th style="width:70px;">조회수</th>
-              <th style="width:130px;">관리</th>
-            </tr>
-          </thead>
-          <tbody id="adminPostListBody">
-            <!-- Dynamic rows rendered by admin.js -->
-          </tbody>
-        </table>
+      <!-- Posts Table List -->
+      <div class="admin-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <h2 style="font-size:19px; font-weight:800; color:var(--navy-dark);">
+            등록된 게시글 목록 <span id="totalPostCount" style="color:var(--primary); font-size:15px; font-weight:700;"></span>
+          </h2>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width:50px;">No</th>
+                <th style="width:110px;">카테고리</th>
+                <th>제목</th>
+                <th style="width:100px;">등록일</th>
+                <th style="width:70px;">조회수</th>
+                <th style="width:130px;">관리</th>
+              </tr>
+            </thead>
+            <tbody id="adminPostListBody">
+              <!-- Dynamic rows rendered by admin.js -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 

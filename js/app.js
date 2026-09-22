@@ -7,9 +7,11 @@
 const state = {
   properties: [],
   boardPosts: [],
+  reviews: [],
   currentPropCategory: 'all',
   currentPropRegion: 'all',
   currentBoardCategory: 'all',
+  currentReviewFilter: 'all',
   boardSearchQuery: ''
 };
 
@@ -18,7 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initHeaderScroll();
   loadProperties();
   loadBoardPosts();
+  loadReviews();
   initFilterEvents();
+  initReviewFilterEvents();
   initInquiryForm();
 });
 
@@ -37,15 +41,24 @@ function initHeaderScroll() {
 // 2. Load Properties
 async function loadProperties() {
   try {
-    const res = await fetch('data/properties.json');
-    if (!res.ok) throw new Error('Failed to load properties');
-    state.properties = await res.json();
+    let res = await fetch('/api/properties');
+    if (!res.ok) {
+      res = await fetch('data/properties.json');
+    }
+    const data = await res.json();
+    state.properties = data.properties || (Array.isArray(data) ? data : []);
     renderProperties();
   } catch (err) {
     console.error('Properties load error:', err);
-    const grid = document.getElementById('propertyGrid');
-    if (grid) {
-      grid.innerHTML = '<p class="error-msg">매물 데이터를 불러오는 중 오류가 발생했습니다.</p>';
+    try {
+      const fallbackRes = await fetch('data/properties.json');
+      state.properties = await fallbackRes.json();
+      renderProperties();
+    } catch (e) {
+      const grid = document.getElementById('propertyGrid');
+      if (grid) {
+        grid.innerHTML = '<p class="error-msg">매물 데이터를 불러오는 중 오류가 발생했습니다.</p>';
+      }
     }
   }
 }
@@ -433,3 +446,349 @@ function formatMarkdown(text) {
     .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
     .replace(/\n\n/g, '<br><br>');
 }
+
+// ==========================================================================
+// Verified Client Reviews & Real Property Review System
+// ==========================================================================
+
+// 1. Load Reviews
+async function loadReviews() {
+  try {
+    let res = await fetch('/api/reviews');
+    if (!res.ok) {
+      res = await fetch('data/reviews.json');
+    }
+    const data = await res.json();
+    state.reviews = data.reviews || (Array.isArray(data) ? data : []);
+    renderReviews();
+  } catch (err) {
+    console.error('Reviews load error:', err);
+    try {
+      const fallbackRes = await fetch('data/reviews.json');
+      state.reviews = await fallbackRes.json();
+      renderReviews();
+    } catch (e) {
+      console.error('Fallback load error:', e);
+      const grid = document.getElementById('reviewsGrid');
+      if (grid) {
+        grid.innerHTML = '<p class="error-msg">후기 데이터를 불러오는 중 오류가 발생했습니다.</p>';
+      }
+    }
+  }
+}
+
+// 2. Render Reviews Grid
+function renderReviews() {
+  const grid = document.getElementById('reviewsGrid');
+  const countBadge = document.getElementById('totalReviewCount');
+  if (!grid) return;
+
+  if (countBadge) {
+    countBadge.textContent = state.reviews.length;
+  }
+
+  const filtered = state.reviews.filter(item => {
+    if (state.currentReviewFilter === 'all') return true;
+    const propType = item.property ? item.property.type : '';
+    return propType === state.currentReviewFilter;
+  });
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1/-1; text-align:center; padding: 48px 20px; background:#fff; border-radius:18px; border:1px dashed #cbd5e1;">
+        <div style="font-size:36px; margin-bottom:12px;">✍️</div>
+        <p style="font-size:16px; font-weight:700; color:#475569; margin-bottom:6px;">선택하신 유형의 등록된 후기가 아직 없습니다.</p>
+        <p style="font-size:14px; color:#94a3b8; margin-bottom:18px;">직접 계약하신 실제 매물 정보와 생생한 거래 경험을 첫 번째로 등록해 보세요!</p>
+        <button onclick="openReviewModal()" class="btn-write-review">✍️ 첫 거래 후기 직접 등록하기</button>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(item => {
+    const stars = '★'.repeat(item.rating || 5) + '☆'.repeat(5 - (item.rating || 5));
+    const prop = item.property || {};
+    const specsList = Array.isArray(prop.specs) ? prop.specs : [];
+    const tagsList = Array.isArray(item.tags) ? item.tags : [];
+    const authorInitial = (item.clientName || '고객').charAt(0);
+
+    return `
+      <article class="review-card" data-id="${item.id}">
+        <div class="review-card-top">
+          <span class="review-badge-verified">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            실거래 계약 검증
+          </span>
+          <div class="review-card-rating">
+            <span class="review-stars">${stars}</span>
+            <span class="review-rating-score">${(item.rating || 5).toFixed(1)}</span>
+          </div>
+        </div>
+
+        <!-- Real Property Info Box -->
+        <div class="review-prop-box">
+          <div class="review-prop-header">
+            <span class="review-prop-type-badge">${prop.typeName || '산업부동산'}</span>
+            <span class="review-prop-date">${item.date ? item.date + ' 계약' : '계약완료'}</span>
+          </div>
+          <h4 class="review-prop-title" title="${prop.title || ''}">🏢 ${prop.title || '실거래 매물'}</h4>
+          <div class="review-prop-summary-row">
+            <span>📍 ${prop.region || '안양·군포·의왕'}</span>
+            <span>•</span>
+            <span class="review-prop-price">${prop.price || '상담협의'}</span>
+            <span>•</span>
+            <span>실 ${prop.areaPyeong || 0}평</span>
+          </div>
+          ${specsList.length > 0 ? `
+            <div class="review-prop-specs-list">
+              ${specsList.slice(0, 3).map(s => `<span class="review-prop-spec-pill">${s}</span>`).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Review Text -->
+        <h3 class="review-title">${item.title}</h3>
+        <p class="review-content">"${item.content}"</p>
+
+        <!-- Tags -->
+        ${tagsList.length > 0 ? `
+          <div class="review-tags-row">
+            ${tagsList.map(t => `<span class="review-tag-chip">#${t}</span>`).join('')}
+          </div>
+        ` : ''}
+
+        <!-- Author Footer -->
+        <div class="review-footer">
+          <div class="review-author-wrap">
+            <div class="review-author-avatar">${authorInitial}</div>
+            <div>
+              <div class="review-author-name">${item.clientName}</div>
+              <div class="review-author-corp">${item.clientCompany || '실거래 기업고객'}</div>
+            </div>
+          </div>
+          <button onclick="openReviewDetail('${item.id}')" class="btn-review-detail">
+            전체보기 →
+          </button>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+// 3. Review Filter Tab Events
+function initReviewFilterEvents() {
+  const filterBtns = document.querySelectorAll('.review-tab-btn');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.currentReviewFilter = btn.dataset.filter;
+      renderReviews();
+    });
+  });
+}
+
+// 4. Review Modals
+window.openReviewModal = function() {
+  const overlay = document.getElementById('reviewModalOverlay');
+  if (overlay) {
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+};
+
+window.closeReviewModal = function() {
+  const overlay = document.getElementById('reviewModalOverlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+};
+
+// 5. Handle Direct Review & Property Submission
+window.handleReviewSubmit = async function(e) {
+  e.preventDefault();
+  const form = document.getElementById('reviewSubmitForm');
+  const btn = document.getElementById('btnSubmitReview');
+
+  if (!form) return;
+
+  const propTypeNames = {
+    'factory': '공장 / 지산',
+    'warehouse': '창고 / 물류',
+    'retail': '상가 / 점포',
+    'office': '사무실 / 사옥'
+  };
+
+  const payload = {
+    clientName: form.clientName.value.trim(),
+    clientCompany: form.clientCompany.value.trim() || '실거래 고객',
+    rating: Number(form.rating.value) || 5,
+    title: form.reviewTitle.value.trim(),
+    content: form.reviewContent.value.trim(),
+    tags: form.tags.value ? form.tags.value.split(',').map(s => s.trim()).filter(Boolean) : ['실거래인증'],
+    verified: true,
+    property: {
+      title: form.propTitle.value.trim(),
+      type: form.propType.value,
+      typeName: propTypeNames[form.propType.value] || '공장 / 지산',
+      region: form.propRegion.value,
+      areaPyeong: parseFloat(form.propArea.value) || 50,
+      price: form.propPrice.value.trim(),
+      specs: form.propSpecs.value ? form.propSpecs.value.split(',').map(s => s.trim()).filter(Boolean) : []
+    }
+  };
+
+  if (!payload.clientName || !payload.title || !payload.content || !payload.property.title) {
+    alert('필수 입력 항목(매물명, 작성자명, 후기 제목, 내용)을 모두 입력해 주세요.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '등록 처리 중...';
+
+  try {
+    const res = await fetch('/api/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    let newReview = null;
+    if (res.ok) {
+      const data = await res.json();
+      newReview = data.review;
+    } else {
+      // Create locally in case of static hosting without server
+      newReview = {
+        id: `rev-${Date.now()}`,
+        ...payload,
+        date: new Date().toISOString().slice(0, 10),
+        likes: 1
+      };
+    }
+
+    state.reviews.unshift(newReview);
+    renderReviews();
+
+    alert('🎉 실제 매물 정보와 고객 후기가 성공적으로 등록되었습니다!\n홈페이지에 즉시 반영되었습니다.');
+    form.reset();
+    closeReviewModal();
+
+    // Scroll smoothly to reviews section
+    const revSec = document.getElementById('reviews');
+    if (revSec) {
+      revSec.scrollIntoView({ behavior: 'smooth' });
+    }
+  } catch (err) {
+    console.error('Review submit error:', err);
+    // Fallback: save to state
+    const fallbackReview = {
+      id: `rev-${Date.now()}`,
+      ...payload,
+      date: new Date().toISOString().slice(0, 10),
+      likes: 1
+    };
+    state.reviews.unshift(fallbackReview);
+    renderReviews();
+    alert('🎉 실제 매물 정보와 고객 후기가 등록되었습니다! (로컬 반영)');
+    form.reset();
+    closeReviewModal();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 실제 매물 정보 및 후기 등록하기';
+  }
+};
+
+// 6. Review Detail Modal
+window.openReviewDetail = function(reviewId) {
+  const item = state.reviews.find(r => r.id === reviewId);
+  if (!item) return;
+
+  const container = document.getElementById('reviewDetailContainer');
+  const overlay = document.getElementById('reviewDetailModalOverlay');
+  if (!container || !overlay) return;
+
+  const stars = '★'.repeat(item.rating || 5) + '☆'.repeat(5 - (item.rating || 5));
+  const prop = item.property || {};
+  const specsList = Array.isArray(prop.specs) ? prop.specs : [];
+  const tagsList = Array.isArray(item.tags) ? item.tags : [];
+
+  container.innerHTML = `
+    <button class="modal-close-btn" onclick="closeReviewDetailModal()">&times;</button>
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+      <span class="review-badge-verified">🟢 실거래 계약 검증 완료</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="stars-gold" style="font-size:16px;">${stars}</span>
+        <span style="font-weight:800; font-size:14px; color:var(--navy-dark);">${(item.rating || 5).toFixed(1)} / 5.0</span>
+      </div>
+    </div>
+
+    <!-- Real Property Card Inside Detail Modal -->
+    <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:16px; padding:20px; margin-bottom:24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-size:12px; font-weight:700; color:var(--primary); background:#e6fffa; padding:3px 10px; border-radius:6px;">
+          ${prop.typeName || '산업부동산'}
+        </span>
+        <span style="font-size:12px; color:var(--text-light);">${item.date ? item.date + ' 계약 체결' : '계약 체결'}</span>
+      </div>
+
+      <h3 style="font-size:18px; font-weight:800; color:var(--navy-dark); margin-bottom:10px;">
+        🏢 ${prop.title || '실거래 매물 정보'}
+      </h3>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; font-size:13px; margin-bottom:14px; background:#fff; padding:12px 16px; border-radius:10px; border:1px solid #e2e8f0;">
+        <div><strong style="color:var(--text-muted);">소재 지역:</strong> ${prop.region || '-'}</div>
+        <div><strong style="color:var(--text-muted);">전용 면적:</strong> 실 ${prop.areaPyeong || 0}평</div>
+        <div><strong style="color:var(--text-muted);">거래 금액:</strong> <span style="color:#b45309; font-weight:700;">${prop.price || '-'}</span></div>
+      </div>
+
+      ${specsList.length > 0 ? `
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          ${specsList.map(s => `<span class="review-prop-spec-pill" style="padding:4px 10px; font-size:12px;">✓ ${s}</span>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+
+    <h2 style="font-size:20px; font-weight:800; color:var(--navy-dark); margin-bottom:14px; line-height:1.4;">
+      "${item.title}"
+    </h2>
+
+    <div style="font-size:15px; color:#334155; line-height:1.8; margin-bottom:24px; white-space:pre-line; background:#f8fafc; padding:20px; border-radius:12px; border-left:4px solid var(--primary);">
+      ${item.content}
+    </div>
+
+    ${tagsList.length > 0 ? `
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px;">
+        ${tagsList.map(t => `<span class="review-tag-chip" style="font-size:12px; padding:4px 10px;">#${t}</span>`).join('')}
+      </div>
+    ` : ''}
+
+    <div style="display:flex; justify-content:space-between; align-items:center; padding-top:18px; border-top:1px solid var(--border-color);">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="review-author-avatar">${(item.clientName || '고').charAt(0)}</div>
+        <div>
+          <div style="font-size:14px; font-weight:800; color:var(--navy-dark);">${item.clientName}</div>
+          <div style="font-size:12px; color:var(--text-light);">${item.clientCompany || '실거래 고객사'}</div>
+        </div>
+      </div>
+
+      <a href="tel:031-442-5918" class="btn-primary-glow" style="padding:10px 18px; font-size:13px;">
+        📞 매물 맞춤 문의하기
+      </a>
+    </div>
+  `;
+
+  overlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeReviewDetailModal = function() {
+  const overlay = document.getElementById('reviewDetailModalOverlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+};
+

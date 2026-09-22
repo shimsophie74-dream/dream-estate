@@ -6,6 +6,14 @@
       "destination": "/api/board.js"
     },
     {
+      "source": "/api/reviews",
+      "destination": "/api/reviews.js"
+    },
+    {
+      "source": "/api/properties",
+      "destination": "/api/properties.js"
+    },
+    {
       "source": "/admin",
       "destination": "/admin.html"
     }
